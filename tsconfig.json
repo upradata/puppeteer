@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
+    // "allowJs": true,
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "lib": ["ESNext", "DOM"],
+    "module": "umd",
+    "moduleResolution": "node",
+    "sourceMap": true,
+    "target": "ESNext",
+    "traceResolution": false,
+    "outDir": "lib",
+    "baseUrl": "./",
+    "paths": {
+      "@root/*": ["./*"],
+      "@util/*": ["./util/*"]
+    }
+  },
+  "include": ["src"],
+  "exclude": ["node_modules", "src/test.ts", "src/**/*.spec.ts"]
+}
