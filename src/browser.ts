@@ -1,6 +1,7 @@
 import path from 'path';
 import puppeteer from 'puppeteer';
-import { assignRecursive, findUpDir } from '@upradata/util';
+import { assignRecursive } from '@upradata/util';
+import { findUpDir } from '@upradata/node-util';
 
 export type GoToOptions = puppeteer.DirectNavigationOptions & { retry?: number; };
 
