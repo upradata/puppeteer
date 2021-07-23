@@ -33,7 +33,9 @@
 	},
 	"dependencies": {
 		"puppeteer": "^10.1.0",
-		"ts-util-is": "^1.2.1"
+		"ts-util-is": "^1.2.1",
+		"@upradata/node-util": "^13.0.9",
+		"@upradata/util": "^11.2.9"
 	},
 	"devDependencies": {
 		"@types/jest": "^26.0.24",
