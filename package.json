@@ -6,11 +6,12 @@
 		"url": "https://github.com/milottit"
 	},
 	"repository": {
-		"url": ""
+		"url": "https://github.com/upradata/puppeteer"
 	},
 	"license": "MIT",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"description": "",
+	"sideEffects": false,
 	"main": "lib",
 	"types": "lib",
 	"module": "lib-esm",
@@ -19,37 +20,37 @@
 		"lib-esm"
 	],
 	"scripts": {
-		"test": "npx jest --verbose false --config jest-ut.config.js",
-		"e2e": "npx jest --passWithNoTests --verbose false --config jest-e2e.config.js",
 		"clean": "shx rm -rf lib lib-esm",
-		"prebuild": "npm run clean",
-		"build": "tsc && tsc -m es6 --outDir lib-esm",
-		"postbuild": "npm run test && npm run e2e",
-		"build:only": "npm run prebuild && tsc && tsc -m es6 --outDir lib-esm",
-		"build:watch": "npm run tsc -w",
-		"github-push": "npm run build && npm version patch && git push && git push --tags",
-		"npm-publish": "npm run build && npm publish --access public"
+		"pre-build": "pnpm run clean",
+		"build": "concurrently 'tsc -p tsconfig.lib.json' 'tsc -p tsconfig.lib-esm.json'",
+		"post-build": "pnpm run test && npm run e2e",
+		"watch": "pnpm run build:watch",
+		"build:watch": "concurrently 'tsc -p tsconfig.lib.json -w' 'tsc -p tsconfig.lib-esm.json -w'",
+		"test": "pnpm jest --passWithNoTests --verbose false --config jest-ut.config.js",
+		"e2e": "pnpm jest --passWithNoTests --verbose false --config jest-e2e.config.js",
+		"github-push": "pnpm run build && npm version patch && git pushall && git pushall-tags",
+		"npm-publish": "pnpm run build && npm publish --access public"
 	},
 	"dependencies": {
-		"puppeteer": "^5.4.1",
-		"ts-util-is": "^1.1.3"
+		"puppeteer": "^10.1.0",
+		"ts-util-is": "^1.2.1"
 	},
 	"devDependencies": {
-		"@types/jest": "^26.0.15",
-		"@types/node": "^14.14.7",
-		"@types/puppeteer": "^5.4.0",
-		"jest": "^26.6.3",
+		"@types/jest": "^26.0.24",
+		"@types/node": "^16.4.1",
+		"@types/puppeteer": "^5.4.4",
+		"concurrently": "^6.2.0",
+		"jest": "^27.0.6",
 		"shx": "^0.3.3",
-		"ts-jest": "^26.4.4",
-		"ts-node": "^9.0.0",
-		"tsconfig-paths": "^3.9.0",
-		"tslint": "^6.1.3",
-		"typescript": "^4.0.5"
+		"ts-jest": "^27.0.4",
+		"ts-node": "^10.1.0",
+		"tsconfig-paths": "^3.10.1",
+		"typescript": "^4.3.5"
 	},
 	"local": {
 		"dependencies": {
-			"@upradata/node-util": "link:/home/milottit/Libraries/Util/node-util@2.0.3",
-			"@upradata/util": "link:/home/milottit/Libraries/Util/util@1.0.24"
+			"@upradata/node-util": "link:/home/milottit/Libraries/Upra-Data/node-util@13.0.9",
+			"@upradata/util": "link:/home/milottit/Libraries/Upra-Data/util@11.2.9"
 		}
 	},
 	"keywords": [
