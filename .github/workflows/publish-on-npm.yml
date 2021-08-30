@@ -1,0 +1,78 @@
+name: Publish on NPM
+
+# Controls when the action will run.
+on:
+    # Triggers the workflow on push or pull request events but only for the master branch
+    push:
+        branches: [master]
+        paths:
+            - "**.js"
+            - "**.ts"
+
+    # pull_request:
+    #     branches: [master]
+
+    # Allows you to run this workflow manually from the Actions tab
+    workflow_dispatch:
+
+# A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+    # This workflow contains a single job called "build"
+    build:
+        # The type of runner that the job will run on
+        runs-on: ubuntu-latest
+
+        # Steps represent a sequence of tasks that will be executed as part of the job
+        steps:
+            # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
+            - name: Checkout Node
+              uses: actions/checkout@v2
+
+            # Setup Node
+
+            - name: Setup Node
+              uses: actions/setup-node@v2
+              with:
+                  node-version: 15.9.0
+                  check-latest: true
+                  registry-url: "https://registry.npmjs.org"
+
+            # Setup Pnpm and run pnpm install
+
+            - name: Create cache pnpm modules
+              uses: actions/cache@v2
+              env:
+                  cache-name: cache-pnpm-modules
+              with:
+                  path: ~/.pnpm-store
+                  key: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.node-version }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+                  restore-keys: ${{ runner.os }}-build-${{ env.cache-name }}-${{ matrix.node-version }}-
+
+            - name: Setup Pnpm
+              # Using actions/setup-node@v2 you need to install pnpm with root permissions, eg:sudo npm install -g pnpm.
+              # Alternatively, if you specify the Node.js version to use, pnpm may be installed with no priviledged user
+              run: curl -f https://get.pnpm.io/v6.7.js | node - add --global pnpm@6
+
+              # Runs pnpm build
+
+            - name: Pnpm Install
+              run: pnpm install --frozen-lockfile=false
+
+            - name: Pnpm Build
+              run: pnpm run build
+
+            # Publish on NPM Repository
+
+            - id: publish
+              name: publish
+              uses: JS-DevTools/npm-publish@v1
+              with:
+                  token: ${{ secrets.NPM_TOKEN }}
+                  access: public
+                  check-version: true
+
+            - if: steps.publish.outputs.type != 'none'
+              run: |
+                  echo "Version changed: ${{ steps.publish.outputs.old-version }} => ${{ steps.publish.outputs.version }}"
+                  echo "Tag => ${{ steps.publish.outputs.tag }} / Access => ${{ steps.publish.outputs.access }}"
