@@ -9,7 +9,7 @@
 		"url": "https://github.com/upradata/puppeteer.git"
 	},
 	"license": "MIT",
-	"version": "1.0.1",
+	"version": "1.0.2",
 	"description": "Set of utils to use puppeteer",
 	"sideEffects": false,
 	"main": "lib",
@@ -21,15 +21,15 @@
 	],
 	"scripts": {
 		"clean": "shx rm -rf lib lib-esm",
-		"pre-build": "pnpm run clean",
+		"pre-build": "npm run clean",
 		"build": "concurrently 'tsc -p tsconfig.lib.json' 'tsc -p tsconfig.lib-esm.json'",
-		"post-build": "pnpm run test && npm run e2e",
-		"watch": "pnpm run build:watch",
+		"post-build": "npm run test && npm run e2e",
+		"watch": "npm run build:watch",
 		"build:watch": "concurrently 'tsc -p tsconfig.lib.json -w' 'tsc -p tsconfig.lib-esm.json -w'",
-		"test": "pnpm jest --passWithNoTests --verbose false --config jest-ut.config.js",
-		"e2e": "pnpm jest --passWithNoTests --verbose false --config jest-e2e.config.js",
-		"github-push": "pnpm run build && npm version patch && git pushall && git pushall-tags",
-		"npm-publish": "pnpm run build && npm publish --access public"
+		"test": "npm jest --passWithNoTests --verbose false --config jest-ut.config.js",
+		"e2e": "npm jest --passWithNoTests --verbose false --config jest-e2e.config.js",
+		"github-push": "npm run build && npm version patch && git pushall && git pushall-tags",
+		"npm-publish": "npm run build && npm publish --access public"
 	},
 	"dependencies": {
 		"puppeteer": "^10.2.0",
