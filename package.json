@@ -1,63 +1,66 @@
 {
-    "name": "@upradata/puppeteer",
-    "author": {
-        "name": "Thomas Milotti",
-        "email": "thomas.milotti@gmail.com",
-        "url": "https://github.com/milottit"
-    },
-    "repository": {
-        "url": "https://github.com/upradata/puppeteer.git"
-    },
-    "license": "MIT",
-    "version": "1.0.2",
-    "description": "Set of utils to use puppeteer",
-    "sideEffects": false,
-    "main": "lib",
-    "types": "lib",
-    "module": "lib-esm",
-    "files": [
-        "lib",
-        "lib-esm"
-    ],
-    "scripts": {
-        "clean": "shx rm -rf lib lib-esm",
-        "pre-build": "npm run clean",
-        "build": "concurrently 'tsc -p tsconfig.lib.json' 'tsc -p tsconfig.lib-esm.json'",
-        "post-build": "npm run test && npm run e2e",
-        "watch": "npm run build:watch",
-        "build:watch": "concurrently 'tsc -p tsconfig.lib.json -w' 'tsc -p tsconfig.lib-esm.json -w'",
-        "test": "npm jest --passWithNoTests --verbose false --config jest-ut.config.js",
-        "e2e": "npm jest --passWithNoTests --verbose false --config jest-e2e.config.js",
-        "github-push": "npm run build && npm version patch && git pushall && git pushall-tags",
-        "npm-publish": "npm run build && npm publish --access public"
-    },
-    "dependencies": {
-        "puppeteer": "^10.2.0",
-        "ts-util-is": "^1.3.1"
-    },
-    "devDependencies": {
-        "@types/jest": "^27.0.1",
-        "@types/node": "^16.7.10",
-        "@types/puppeteer": "^5.4.4",
-        "concurrently": "^6.2.1",
-        "jest": "^27.1.0",
-        "shx": "^0.3.3",
-        "ts-jest": "^27.0.5",
-        "ts-node": "^10.2.1",
-        "tsconfig-paths": "^3.11.0",
-        "typescript": "^4.4.2"
-    },
-    "local": {
-        "dependencies": {
-            "@upradata/node-util": "link:/home/milottit/Libraries/Upra-Data/node-util@14.0.2",
-            "@upradata/util": "link:/home/milottit/Libraries/Upra-Data/util@13.0.1"
-        }
-    },
-    "keywords": [
-        "puppeteer",
-        "util"
-    ],
-    "publishConfig": {
-        "access": "public"
-    }
+	"name": "@upradata/puppeteer",
+	"author": {
+		"name": "Thomas Milotti",
+		"email": "thomas.milotti@gmail.com",
+		"url": "https://github.com/milottit"
+	},
+	"repository": {
+		"url": "https://github.com/upradata/puppeteer.git"
+	},
+	"license": "MIT",
+	"version": "1.0.2",
+	"description": "Set of utils to use puppeteer",
+	"sideEffects": false,
+	"main": "lib",
+	"types": "lib",
+	"module": "lib-esm",
+	"files": [
+		"lib",
+		"lib-esm"
+	],
+	"scripts": {
+		"clean": "shx rm -rf lib lib-esm",
+		"pre-build": "npm run clean",
+		"build": "concurrently 'tsc -p tsconfig.lib.json' 'tsc -p tsconfig.lib-esm.json'",
+		"post-build": "npm run test && npm run e2e",
+		"watch": "npm run build:watch",
+		"build:watch": "concurrently 'tsc -p tsconfig.lib.json -w' 'tsc -p tsconfig.lib-esm.json -w'",
+		"test": "npm jest --passWithNoTests --verbose false --config jest-ut.config.js",
+		"e2e": "npm jest --passWithNoTests --verbose false --config jest-e2e.config.js",
+		"github-push": "npm run build && npm version patch && git pushall && git pushall-tags",
+		"npm-publish": "npm run build && npm publish --access public"
+	},
+	"dependencies": {
+		"puppeteer": "^10.4.0",
+		"ts-util-is": "^1.3.1"
+	},
+	"devDependencies": {
+		"@types/jest": "^27.0.2",
+		"@types/node": "^16.10.2",
+		"@types/puppeteer": "^5.4.4",
+		"concurrently": "^6.2.2",
+		"jest": "^27.2.4",
+		"shx": "^0.3.3",
+		"ts-jest": "^27.0.5",
+		"ts-node": "^10.2.1",
+		"tsconfig-paths": "^3.11.0",
+		"typescript": "^4.4.3"
+	},
+	"local": {
+		"dependencies": {
+			"@upradata/node-util": "link:/home/milottit/Libraries/Upra-Data/node-util@14.0.2",
+			"@upradata/util": "link:/home/milottit/Libraries/Upra-Data/util@13.0.1"
+		},
+		"usedBy": {
+			"@upradata/tilda-tools": "/home/milottit/Libraries/Tilda/tools"
+		}
+	},
+	"keywords": [
+		"puppeteer",
+		"util"
+	],
+	"publishConfig": {
+		"access": "public"
+	}
 }

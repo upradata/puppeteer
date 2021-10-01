@@ -3,27 +3,37 @@ import puppeteer from 'puppeteer';
 import { assignRecursive } from '@upradata/util';
 import { lookupRoot } from '@upradata/node-util';
 
+export type LaunchOptions = Parameters<typeof puppeteer.launch>[ 0 ];
 export type GoToOptions = Parameters<puppeteer.Page[ 'goto' ]>[ 1 ] & { retry?: number; };
+
+
 
 export class Browser {
     instance: puppeteer.Browser;
     defaultViewPort: puppeteer.Viewport;
 
-    constructor(public options: puppeteer.LaunchOptions & { defaultViewport?: puppeteer.Viewport; } = {}) {
-        this.defaultViewPort = { width: 1920, height: 1080, deviceScaleFactor: 1, ...options.defaultViewport };
-        // deviceScaleFactor: 1 => for high dpi
-    }
+
+    constructor(public options: LaunchOptions = {}) { }
 
     async init() {
-        this.instance = await puppeteer.launch(assignRecursive({
+        const options = assignRecursive({
             // args: [`--window-size=1920,1080`],
             // There is an option to save user data using the userDataDir option when launching puppeteer. This stores the session and other things related to launching chrome.
             userDataDir: path.join(await lookupRoot.async(__dirname) || '', '.puppetter/user_data'),
-            defaultViewport: this.defaultViewPort,
+            defaultViewport: {
+                width: 1920,
+                height: 1080,
+                // deviceScaleFactor: 1 => for high dpi
+                deviceScaleFactor: 1
+            },
             headless: false,
             ignoreHTTPSErrors: true,
             timeout: 1000
-        }, this.options));
+        }, this.options);
+
+        this.defaultViewPort = options.defaultViewport;
+
+        this.instance = await puppeteer.launch(options);
 
     }
 
