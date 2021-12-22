@@ -1,12 +1,16 @@
 import path from 'path';
+import { promisify } from 'util';
 import puppeteer from 'puppeteer';
-import { assignRecursive } from '@upradata/util';
-import { lookupRoot } from '@upradata/node-util';
+import { assignRecursive, bind, ifThen, ValueOf } from '@upradata/util';
+import { lookupRoot, red } from '@upradata/node-util';
+import type { WebpackCompileOptions } from '@upradata/webpack';
+export * as Puppeteer from 'puppeteer';
+
 
 export type LaunchOptions = Parameters<typeof puppeteer.launch>[ 0 ];
 export type GoToOptions = Parameters<puppeteer.Page[ 'goto' ]>[ 1 ] & { retry?: number; };
 
-
+export type WaitOptions = puppeteer.WaitForOptions & { referer?: string; };
 
 export class Browser {
     instance: puppeteer.Browser;
@@ -38,7 +42,9 @@ export class Browser {
     }
 
 
-    async newPage(options: { viewport?: puppeteer.Viewport; defaultTimeout?: number; } = {}) {
+    async newPage(options: { url?: string; wait?: WaitOptions; viewport?: puppeteer.Viewport; defaultTimeout?: number; } = {}) {
+        const { url, wait = { waitUntil: 'load' }, viewport = this.defaultViewPort, defaultTimeout = 20000 } = options;
+
         const page = await this.instance.newPage();
 
         page.on('console', consoleObj => console.log(consoleObj.text()));
@@ -54,12 +60,15 @@ export class Browser {
             request.continue();
         });
 
-        page.setViewport(options.viewport || this.defaultViewPort);
+        page.setViewport(viewport);
         // await page.setUserAgent(randomUseragent.getRandom());
 
-        page.setDefaultTimeout(options.defaultTimeout || 20000); // timeout for waitFor function (default === 30000)
+        page.setDefaultTimeout(defaultTimeout); // timeout for waitFor function (default === 30000)
 
         this.augmentPage(page);
+
+        if (url)
+            await page.goto(url, wait);
 
         return page;
     }
@@ -71,7 +80,7 @@ export class Browser {
         const goToReply = (url: string, options?: GoToOptions, nbRetried: number = 1) => {
             const { retry = 1 } = options || {};
 
-            return oldGoTo.call(this, url, options).catch((e: unknown) => {
+            return oldGoTo.call(page, url, options).catch((e: unknown) => {
                 if (e instanceof Error && nbRetried < retry) // TimeoutError
                     return goToReply(url, options, nbRetried + 1);
 
@@ -79,6 +88,65 @@ export class Browser {
             });
         };
 
-        page.goto = (url: string, options?: GoToOptions) => goToReply.call(this, url, options);
+        page.goto = (url: string, options?: GoToOptions) => goToReply(url, options);
+    }
+
+    public async addJsModuleToPage(page: puppeteer.Page, options: PuppeteerWebpackCompileOptions) {
+        const { filesystems: filesystemsOption, ...webpackCompileOptions } = options;
+
+        const { webpackCompile } = await import('@upradata/webpack');
+
+        const getFileSystem = <FsType extends keyof WebpackFileSystems>(fsType: FsType): Promise<WebpackFileSystems[ FsType ]> => {
+            return ifThen(filesystemsOption[ fsType ] as PuppeteerWebpackFileSystems[ FsType ])
+                .next(fs => ({ if: fs === 'memfs', then: { callable: async () => (await import('memfs')).default } }))
+                .next(fs => ({ if: fs === 'fs', then: { callable: async () => (await import('fs')).default } }))
+                .next(fs => ({
+                    if: typeof fs === 'object',
+                    then: Promise.resolve(fs),
+                    else: { callable: async () => (await import('fs')).default }
+                })).value as Promise<WebpackFileSystems[ FsType ]>;
+        };
+
+
+
+        const { files, filesystems } = await webpackCompile({
+            output: {
+                path: '/',
+                filename: `[name].bundle.js`
+            },
+            mode: 'development',
+            filesystems: filesystemsOption ? {
+                input: await getFileSystem('input'),
+                intermediate: await getFileSystem('intermediate'),
+                output: await getFileSystem('output')
+            } : {},
+            ...webpackCompileOptions
+        });
+
+        const inputFS = filesystems.input;
+        const readFile = async (filepath: string) => (await promisify(bind(inputFS.readFile, inputFS))(filepath/* , { encoding: 'utf8' } */)).toString();
+
+        await Promise.allSettled(
+            files.filter(f => !f.filename.endsWith('.d.ts')).map(async f => {
+                return page.addScriptTag({ content: await readFile(f.filepath) });
+            })
+        ).then(results => {
+            for (const result of results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]) {
+                console.error(red`Error occured while trying to add  webpack output to puppeteer page`);
+                console.error(result.reason);
+            }
+        });
     }
 }
+
+
+type WebpackFileSystems = WebpackCompileOptions[ 'filesystems' ];
+
+
+export type PuppeteerWebpackFileSystems = {
+    [ K in keyof WebpackFileSystems ]: WebpackFileSystems[ K ] | 'memfs' | 'fs'
+};
+
+export type PuppeteerWebpackCompileOptions = Omit<WebpackCompileOptions, 'filesystems'> & {
+    filesystems?: PuppeteerWebpackFileSystems;
+};
