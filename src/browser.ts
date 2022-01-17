@@ -3,7 +3,7 @@ import { promisify } from 'util';
 import puppeteer from 'puppeteer';
 import { assignRecursive, bind, ifThen, ValueOf } from '@upradata/util';
 import { lookupRoot, red } from '@upradata/node-util';
-import type { WebpackCompileOptions } from '@upradata/webpack';
+import type { WebpackCompileOptions, WebpackOutputAsset } from '@upradata/webpack';
 export * as Puppeteer from 'puppeteer';
 
 
@@ -91,8 +91,8 @@ export class Browser {
         page.goto = (url: string, options?: GoToOptions) => goToReply(url, options);
     }
 
-    public async addJsModuleToPage(page: puppeteer.Page, options: PuppeteerWebpackCompileOptions) {
-        const { filesystems: filesystemsOption, ...webpackCompileOptions } = options;
+    public async compileModules(options: PuppeteerWebpackCompileOptions): Promise<Array<WebpackOutputAsset & { content: string; }>> {
+        const { filesystems: filesystemsOption, outputInclude = /\..?js$/, ...webpackCompileOptions } = options;
 
         const { webpackCompile } = await import('@upradata/webpack');
 
@@ -106,8 +106,6 @@ export class Browser {
                     else: { callable: async () => (await import('fs')).default }
                 })).value as Promise<WebpackFileSystems[ FsType ]>;
         };
-
-
 
         const { files, filesystems } = await webpackCompile({
             output: {
@@ -126,16 +124,26 @@ export class Browser {
         const inputFS = filesystems.input;
         const readFile = async (filepath: string) => (await promisify(bind(inputFS.readFile, inputFS))(filepath/* , { encoding: 'utf8' } */)).toString();
 
-        await Promise.allSettled(
-            files.filter(f => !f.filename.endsWith('.d.ts')).map(async f => {
-                return page.addScriptTag({ content: await readFile(f.filepath) });
-            })
+        const outputFilter = typeof outputInclude === 'function' ? outputInclude : (file: string) => outputInclude.test(file);
+
+        return Promise.allSettled(
+            files.filter(f => outputFilter(f.filepath)).map(async f => ({ ...f, content: await readFile(f.filepath) }))
         ).then(results => {
             for (const result of results.filter(r => r.status === 'rejected') as PromiseRejectedResult[]) {
-                console.error(red`Error occured while trying to add  webpack output to puppeteer page`);
+                console.error(red`Error occured while trying to add webpack output to puppeteer page`);
                 console.error(result.reason);
             }
+
+            type Success = PromiseFulfilledResult<WebpackOutputAsset & { content: string; }>;
+            return (results.filter(r => r.status === 'fulfilled') as any as Array<Success>).map(v => v.value);
         });
+    }
+
+    public async addJsModuleToPage(page: puppeteer.Page, options: PuppeteerWebpackCompileOptions) {
+        const files = await this.compileModules(options);
+        await Promise.all(files.map(async f => page.addScriptTag({ content: f.content })));
+
+        return this;
     }
 }
 
@@ -149,4 +157,5 @@ export type PuppeteerWebpackFileSystems = {
 
 export type PuppeteerWebpackCompileOptions = Omit<WebpackCompileOptions, 'filesystems'> & {
     filesystems?: PuppeteerWebpackFileSystems;
+    outputInclude?: ((file: string) => boolean) | RegExp;
 };
