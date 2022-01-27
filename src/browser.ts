@@ -1,7 +1,7 @@
 import path from 'path';
 import { promisify } from 'util';
 import puppeteer from 'puppeteer';
-import { assignRecursive, bind, ifThen, ValueOf } from '@upradata/util';
+import { assignRecursive, bind, ifThen } from '@upradata/util';
 import { lookupRoot, red } from '@upradata/node-util';
 import type { WebpackCompileOptions, WebpackOutputAsset } from '@upradata/webpack';
 export * as Puppeteer from 'puppeteer';
@@ -144,6 +144,14 @@ export class Browser {
         await Promise.all(files.map(async f => page.addScriptTag({ content: f.content })));
 
         return this;
+    }
+
+    public click(page: puppeteer.Page, cssSelector: string) {
+        // this.page.click(cssSelector) does not work always strangely
+        return page.$eval(
+            cssSelector,
+            (elem: HTMLElement) => elem.click()
+        ); // works always
     }
 }
 
