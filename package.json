@@ -60,7 +60,8 @@
 		},
 		"usedBy": {
 			"@upradata/tilda-tools": "/home/milottit/Libraries/Tilda/tools",
-			"@upradata/tilda-services-components": "/home/milottit/Libraries/Tilda/services-components"
+			"@upradata/tilda-services-components": "/home/milottit/Libraries/Tilda/services-components",
+			"@upradata/website": "/home/milottit/Projects/upradata-website"
 		}
 	},
 	"keywords": [

@@ -4,6 +4,8 @@ import puppeteer from 'puppeteer';
 import { assignRecursive, bind, ifThen } from '@upradata/util';
 import { lookupRoot, red } from '@upradata/node-util';
 import type { WebpackCompileOptions, WebpackOutputAsset } from '@upradata/webpack';
+import { Page } from './page';
+
 export * as Puppeteer from 'puppeteer';
 
 
@@ -15,7 +17,6 @@ export type WaitOptions = puppeteer.WaitForOptions & { referer?: string; };
 export class Browser {
     instance: puppeteer.Browser;
     defaultViewPort: puppeteer.Viewport;
-
 
     constructor(public options: LaunchOptions = {}) { }
 
@@ -42,8 +43,8 @@ export class Browser {
     }
 
 
-    async newPage(options: { url?: string; wait?: WaitOptions; viewport?: puppeteer.Viewport; defaultTimeout?: number; } = {}) {
-        const { url, wait = { waitUntil: 'load' }, viewport = this.defaultViewPort, defaultTimeout = 20000 } = options;
+    async newPage(options: { url?: string; wait?: WaitOptions; retry?: number; viewport?: puppeteer.Viewport; defaultTimeout?: number; } = {}): Promise<Page> {
+        const { url, retry, wait = { waitUntil: 'load' }, viewport = this.defaultViewPort, defaultTimeout = 20000 } = options;
 
         const page = await this.instance.newPage();
 
@@ -68,7 +69,7 @@ export class Browser {
         this.augmentPage(page);
 
         if (url)
-            await page.goto(url, wait);
+            await page.goto(url, { ...wait, retry });
 
         return page;
     }
@@ -77,19 +78,28 @@ export class Browser {
 
         const oldGoTo = page.goto;
 
-        const goToReply = (url: string, options?: GoToOptions, nbRetried: number = 1) => {
+        function goToReply(url: string, options?: GoToOptions, nbRetried: number = 1) {
             const { retry = 1 } = options || {};
 
-            return oldGoTo.call(page, url, options).catch((e: unknown) => {
+            return oldGoTo.call(this, url, options).catch((e: unknown) => {
                 if (e instanceof Error && nbRetried < retry) // TimeoutError
                     return goToReply(url, options, nbRetried + 1);
 
                 return Promise.reject(e);
             });
-        };
+        }
 
-        page.goto = (url: string, options?: GoToOptions) => goToReply(url, options);
+        page.goto = function (url: string, options?: GoToOptions) { return goToReply.call(this, url, options); };
+
+        page.click = function (cssSelector: string) {
+            // this.page.click(cssSelector) does not work always strangely
+            return this.$eval(
+                cssSelector,
+                (elem: HTMLElement) => elem.click()
+            ); // works always
+        };
     }
+
 
     public async compileModules(options: PuppeteerWebpackCompileOptions): Promise<Array<WebpackOutputAsset & { content: string; }>> {
         const { filesystems: filesystemsOption, outputInclude = /\..?js$/, ...webpackCompileOptions } = options;
@@ -146,6 +156,8 @@ export class Browser {
         return this;
     }
 
+
+    // backward compatibility
     public click(page: puppeteer.Page, cssSelector: string) {
         // this.page.click(cssSelector) does not work always strangely
         return page.$eval(
