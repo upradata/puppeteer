@@ -5,6 +5,7 @@ import { assignRecursive, bind, ifThen } from '@upradata/util';
 import { lookupRoot, red } from '@upradata/node-util';
 import type { WebpackCompileOptions, WebpackOutputAsset } from '@upradata/webpack';
 import { Page } from './page';
+import { createHtmlListIterator } from './utils';
 
 export * as Puppeteer from 'puppeteer';
 
@@ -76,20 +77,20 @@ export class Browser {
 
     private augmentPage(page: puppeteer.Page) {
 
-        const oldGoTo = page.goto;
+        const oldGoTo = page.goto.bind(page) as puppeteer.Page[ 'goto' ];
 
-        function goToReply(url: string, options?: GoToOptions, nbRetried: number = 1) {
+        const goToRetry = (url: string, options?: GoToOptions, nbRetried: number = 1) => {
             const { retry = 1 } = options || {};
 
-            return oldGoTo.call(this, url, options).catch((e: unknown) => {
+            return oldGoTo(url, options).catch((e: unknown) => {
                 if (e instanceof Error && nbRetried < retry) // TimeoutError
-                    return goToReply(url, options, nbRetried + 1);
+                    return goToRetry(url, options, nbRetried + 1);
 
                 return Promise.reject(e);
             });
-        }
+        };
 
-        page.goto = function (url: string, options?: GoToOptions) { return goToReply.call(this, url, options); };
+        page.goto = (url: string, options?: GoToOptions) => goToRetry.call(this, url, options);
 
         page.click = function (cssSelector: string) {
             // this.page.click(cssSelector) does not work always strangely
@@ -98,6 +99,8 @@ export class Browser {
                 (elem: HTMLElement) => elem.click()
             ); // works always
         };
+
+        page.createHtmlListIterator = createHtmlListIterator;
     }
 
 

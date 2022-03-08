@@ -1,9 +1,60 @@
-import Puppeteer from 'puppeteer';
-import { TT$ } from '@upradata/util';
+import type Puppeteer from 'puppeteer';
+import { delayedPromise } from '@upradata/util';
+import type { Page } from './page';
 
 
-export const createHtmlListIterator = async (options: { list: () => TT$<Puppeteer.ElementHandle<Element>[]>; }) => {
-    const { list: getList } = options;
+
+export async function createHtmlListIterator(options: Puppeteer.CreateHtmlListIteratorOptions) {
+    const { list: getList, waitAjax, ajaxResponseUrl, waitNewItemsTimeout = 1000, polling = 16, page = this as Page } = options;
+
+
+    const waitAjaxResponse = async (currentNbItems: number) => {
+        if (!page)
+            throw new Error(`page must be specified when waiting for ajax response`);
+
+        try {
+            await page.bringToFront();
+            await page.waitForResponse(response => {
+                const isGoodUrl = ajaxResponseUrl ? response.url().includes(ajaxResponseUrl) : true;
+                return isGoodUrl && response.headers()[ 'content-type' ] === 'application/json' && response.status() === 200;
+            }, { timeout: waitNewItemsTimeout });
+
+            return { isNewItems: true };
+
+        } catch (_e) {
+            return waitNewItems(currentNbItems);
+        }
+
+    };
+
+
+    const waitNewItems = async (currentNbItems: number) => {
+        const { promise, resolve, reject } = delayedPromise<void>();
+        let time = performance.now();
+
+        const id = setInterval(async () => {
+            const newItems = await getList();
+
+            if (newItems.length > currentNbItems) {
+                clearInterval(id);
+                return resolve();
+            }
+
+            time += performance.now();
+
+            if (time > waitNewItemsTimeout) {
+                clearInterval(id);
+                return reject();
+            }
+        }, polling);
+
+        try {
+            await promise;
+            return { isNewItems: true };
+        } catch (e) {
+            return { isNewItems: false };
+        }
+    };
 
     const getItems = async (start: number) => {
         const items = await getList();
@@ -13,12 +64,18 @@ export const createHtmlListIterator = async (options: { list: () => TT$<Puppetee
 
             return {
                 items: list,
-                count: list ? list.length - 1 - start : 0
+                count: list?.length ?? 0
             };
         };
 
         if (start > items.length - 1) {
             await items.at(-1).evaluate(el => el.scrollIntoView(true));
+
+            const { isNewItems } = waitAjax ? await waitAjaxResponse(items.length) : await waitNewItems(items.length);
+
+            if (!isNewItems)
+                return done();
+
             const newItems = await getList();
 
             if (newItems.length === items.length)
@@ -31,19 +88,18 @@ export const createHtmlListIterator = async (options: { list: () => TT$<Puppetee
     };
 
 
-    const next = async function* (i: number = 0): AsyncGenerator<Puppeteer.ElementHandle<Element>> {
+    const next = async function* (start: number = 0): AsyncGenerator<{ item: Puppeteer.ElementHandle<Element>; i: number; }> {
 
-        const { items, count } = await getItems(i);
+        const { items, count } = await getItems(start);
 
         if (count === 0)
             return;
 
-        for (const item of items)
-            yield item;
+        for (let i = 0; i < items.length; ++i)
+            yield { item: items[ i ], i: start + i };
 
-        yield* next(i + count);
+        yield* next(start + count + 1);
     };
 
-
     return next;
-};
+}
