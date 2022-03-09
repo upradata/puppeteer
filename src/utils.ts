@@ -22,15 +22,16 @@ export async function createHtmlListIterator(options: Puppeteer.CreateHtmlListIt
             return { isNewItems: true };
 
         } catch (_e) {
-            return waitNewItems(currentNbItems);
+            return waitNewItemsPooling(currentNbItems);
         }
 
     };
 
 
-    const waitNewItems = async (currentNbItems: number) => {
+    const waitNewItemsPooling = async (currentNbItems: number) => {
         const { promise, resolve, reject } = delayedPromise<void>();
-        let time = performance.now();
+
+        const start = performance.now();
 
         const id = setInterval(async () => {
             const newItems = await getList();
@@ -40,9 +41,7 @@ export async function createHtmlListIterator(options: Puppeteer.CreateHtmlListIt
                 return resolve();
             }
 
-            time += performance.now();
-
-            if (time > waitNewItemsTimeout) {
+            if (performance.now() - start > waitNewItemsTimeout) {
                 clearInterval(id);
                 return reject();
             }
@@ -71,7 +70,7 @@ export async function createHtmlListIterator(options: Puppeteer.CreateHtmlListIt
         if (start > items.length - 1) {
             await items.at(-1).evaluate(el => el.scrollIntoView(true));
 
-            const { isNewItems } = waitAjax ? await waitAjaxResponse(items.length) : await waitNewItems(items.length);
+            const { isNewItems } = waitAjax ? await waitAjaxResponse(items.length) : await waitNewItemsPooling(items.length);
 
             if (!isNewItems)
                 return done();
